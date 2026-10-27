@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Breakout Arcade</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        arcade: ['Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #050811;
+            color: #f3f4f6;
+            user-select: none;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+        .neon-border {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), inset 0 0 15px rgba(59, 130, 246, 0.15);
+        }
+        .neon-text-blue {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 10px rgba(244, 63, 94, 0.8), 0 0 20px rgba(244, 63, 94, 0.4);
+        }
+        .neon-text-green {
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+        #gameCanvas {
+            background: radial-gradient(circle at center, #0b1120 0%, #030712 100%);
+            touch-action: none;
+            display: block;
+        }
+        .arcade-btn {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+        }
+        .arcade-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(37, 99, 235, 0.6);
+        }
+        .arcade-btn:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-2 sm:p-4 font-sans">
+
+    <!-- Header / HUD Bar -->
+    <header class="w-full max-w-4xl bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-2xl flex flex-wrap items-center justify-between gap-3 mb-2">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/50 flex items-center justify-center text-blue-400 font-bold text-xl neon-text-blue">
+                <i class="fa-solid fa-gamepad"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg sm:text-xl tracking-wider text-white neon-text-blue">NEON BREAKOUT</h1>
+                <p class="text-[10px] sm:text-xs text-slate-400">Arcade Classic Edition</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm font-arcade">
+            <div class="bg-slate-800/90 border border-slate-700/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl flex flex-col items-center min-w-[60px]">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Score</span>
+                <span id="scoreVal" class="text-amber-400 font-bold text-sm sm:text-base">0</span>
+            </div>
+            <div class="bg-slate-800/90 border border-slate-700/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl flex flex-col items-center min-w-[60px]">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Lives</span>
+                <span id="livesVal" class="text-rose-400 font-bold text-sm sm:text-base">3</span>
+            </div>
+            <div class="bg-slate-800/90 border border-slate-700/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl flex flex-col items-center min-w-[60px]">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Level</span>
+                <span id="levelVal" class="text-emerald-400 font-bold text-sm sm:text-base">1</span>
+            </div>
+            <div class="bg-slate-800/90 border border-slate-700/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl flex flex-col items-center hidden md:flex min-w-[70px]">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider">High Score</span>
+                <span id="highScoreVal" class="text-purple-400 font-bold text-sm sm:text-base">0</span>
+            </div>
+        </div>
+
+        <!-- Buttons Top Right -->
+        <div class="flex items-center gap-2">
+            <button id="pauseBtn" onclick="togglePause()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-300 transition" title="Tạm dừng / Tiếp tục">
+                <i class="fa-solid fa-pause" id="pauseIcon"></i>
+            </button>
+            <button onclick="toggleMute()" id="soundBtn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-300 transition" title="Âm thanh">
+                <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+            </button>
+            <button onclick="openInfoModal()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-300 transition" title="Hướng dẫn">
+                <i class="fa-solid fa-circle-question"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Frame -->
+    <main class="relative w-full max-w-4xl aspect-[4/3] sm:aspect-[16/10] bg-slate-950 border-2 border-blue-500/40 rounded-2xl overflow-hidden neon-border shadow-2xl flex items-center justify-center">
+        
+        <!-- Canvas -->
+        <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+        <!-- Start Overlay -->
+        <div id="startScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-blue-600/20 border-2 border-blue-500 flex items-center justify-center text-blue-400 text-2xl sm:text-4xl mb-4 neon-text-blue animate-pulse">
+                <i class="fa-solid fa-cube"></i>
+            </div>
+            <h2 class="text-3xl sm:text-5xl font-extrabold tracking-wider text-white mb-2 neon-text-blue">NEON BREAKOUT</h2>
+            <p class="text-slate-400 max-w-md text-xs sm:text-sm mb-6">
+                Phá hủy toàn bộ gạch Neon, thu thập các vật phẩm hỗ trợ và đạt điểm số kỷ lục!
+            </p>
+            <button onclick="startGame()" class="arcade-btn text-white font-bold px-8 py-3.5 sm:py-4 rounded-xl text-base sm:text-lg flex items-center gap-3">
+                <i class="fa-solid fa-play"></i> BẮT ĐẦU CHƠI (START GAME)
+            </button>
+            <div class="mt-6 flex flex-wrap justify-center items-center gap-4 text-xs text-slate-400">
+                <span><i class="fa-solid fa-keyboard text-blue-400 mr-1"></i> Phím A/D hoặc Mũi tên</span>
+                <span><i class="fa-solid fa-hand-pointer text-blue-400 mr-1"></i> Chuột / Cảm ứng vuốt</span>
+            </div>
+        </div>
+
+        <!-- Pause Overlay -->
+        <div id="pauseScreen" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+            <h2 class="text-3xl font-bold text-white mb-6 neon-text-blue">TẠM DỪNG</h2>
+            <div class="flex flex-col gap-3 w-48">
+                <button onclick="togglePause()" class="arcade-btn text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> Tiếp tục
+                </button>
+                <button onclick="restartGame()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-rotate-right"></i> Chơi lại
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="gameOverScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+            <div class="w-16 h-16 rounded-2xl bg-rose-600/20 border-2 border-rose-500 flex items-center justify-center text-rose-400 text-3xl mb-4">
+                <i class="fa-solid fa-skull"></i>
+            </div>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-rose-500 mb-2 neon-text-pink">GAME OVER</h2>
+            <p class="text-slate-400 mb-6 text-sm">Đừng nản lòng! Hãy thử lại để vượt qua kỷ lục.</p>
+            
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl mb-6 w-64 flex justify-around text-center">
+                <div>
+                    <span class="text-xs text-slate-400 block">Điểm số</span>
+                    <span id="finalScore" class="text-amber-400 text-xl font-bold font-arcade">0</span>
+                </div>
+                <div class="border-r border-slate-800"></div>
+                <div>
+                    <span class="text-xs text-slate-400 block">Kỷ lục</span>
+                    <span id="finalHighScore" class="text-purple-400 text-xl font-bold font-arcade">0</span>
+                </div>
+            </div>
+
+            <button onclick="restartGame()" class="arcade-btn text-white font-bold px-8 py-3.5 rounded-xl flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i> Chơi lại ngay
+            </button>
+        </div>
+
+        <!-- Victory / Level Clear Overlay -->
+        <div id="victoryScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-600/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 text-3xl mb-4 animate-bounce">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 id="victoryTitle" class="text-3xl sm:text-4xl font-extrabold text-emerald-400 mb-2 neon-text-green">HOÀN THÀNH MAN!</h2>
+            <p id="victoryDesc" class="text-slate-400 mb-6 text-sm">Bạn đã dọn sạch toàn bộ gạch Neon!</p>
+            <button id="nextLevelBtn" onclick="nextLevel()" class="arcade-btn text-white font-bold px-8 py-3.5 rounded-xl flex items-center gap-2">
+                <i class="fa-solid fa-forward"></i> Sang Màn Tiếp Theo
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer Controls Legend -->
+    <footer class="w-full max-w-4xl text-center py-2 text-[11px] sm:text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
+        <p>© Neon Breakout Arcade Game</p>
+        <div class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> Mở Rộng Thanh</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Nhân Bóng</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Thêm Mạng</span>
+        </div>
+    </footer>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="closeInfoModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-blue-500"></i> Hướng Dẫn Trò Chơi
+            </h3>
+            <ul class="space-y-3 text-xs sm:text-sm text-slate-300 mb-6">
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-angle-right text-blue-400 mt-0.5"></i>
+                    <span><strong>Di chuyển:</strong> Dùng phím mũi tên Left / Right hoặc A / D. Trên màn hình cảm ứng / chuột, chỉ cần di chuyển ngón tay hoặc con trỏ.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-angle-right text-blue-400 mt-0.5"></i>
+                    <span><strong>Góc nảy:</strong> Đánh bóng trúng cạnh viền của thanh đỡ sẽ khiến bóng nảy đi theo góc nghiêng rộng hơn.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-angle-right text-blue-400 mt-0.5"></i>
+                    <span><strong>Vật phẩm hỗ trợ:</strong> Khi đập vỡ một số gạch đặc biệt, vật phẩm sẽ rơi xuống:
+                        <ul class="pl-4 mt-1 space-y-1 text-slate-400 list-disc">
+                            <li><strong class="text-blue-400">Xanh Dương:</strong> Mở rộng thanh đỡ.</li>
+                            <li><strong class="text-amber-400">Vàng Cam:</strong> Nhân bản thêm 2 quả bóng.</li>
+                            <li><strong class="text-rose-400">Đỏ:</strong> Cộng thêm 1 mạng.</li>
+                        </ul>
+                    </span>
+                </li>
+            </ul>
+            <button onclick="closeInfoModal()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-2.5 rounded-xl transition">
+                Đã Hiểu
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="msgToast" class="fixed bottom-6 right-6 bg-slate-900 border border-blue-500/50 text-white px-5 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 transform translate-y-20 opacity-0 flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-lg" id="msgIcon"></i>
+        <span id="msgText" class="text-sm font-medium">Thông báo</span>
+    </div>
+
+    <!-- Main Game Script -->
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const scoreEl = document.getElementById('scoreVal');
+        const livesEl = document.getElementById('livesVal');
+        const levelEl = document.getElementById('levelVal');
+        const highScoreEl = document.getElementById('highScoreVal');
+
+        const startScreen = document.getElementById('startScreen');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const victoryScreen = document.getElementById('victoryScreen');
+        const victoryTitle = document.getElementById('victoryTitle');
+        const victoryDesc = document.getElementById('victoryDesc');
+
+        const pauseIcon = document.getElementById('pauseIcon');
+        const soundBtn = document.getElementById('soundIcon');
+
+        // State variables
+        let gameState = 'START'; // START, PLAYING, PAUSED, GAMEOVER, VICTORY
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let highScore = localStorage.getItem('neon_breakout_highscore') || 0;
+        let soundEnabled = true;
+
+        highScoreEl.textContent = highScore;
+
+        // Virtual coordinates for canvas scaling
+        const VIRTUAL_WIDTH = 800;
+        const VIRTUAL_HEIGHT = 600;
+
+        function resizeCanvas() {
+            canvas.width = VIRTUAL_WIDTH;
+            canvas.height = VIRTUAL_HEIGHT;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Paddle Configuration
+        let paddle = {
+            width: 120,
+            height: 16,
+            x: VIRTUAL_WIDTH / 2 - 60,
+            y: VIRTUAL_HEIGHT - 40,
+            speed: 9,
+            color: '#3b82f6',
+            targetX: VIRTUAL_WIDTH / 2 - 60
+        };
+
+        // Ball Class / Functions
+        let balls = [];
+        function createBall(x, y, dx, dy) {
+            return {
+                x: x !== undefined ? x : paddle.x + paddle.width / 2,
+                y: y !== undefined ? y : paddle.y - 12,
+                radius: 8,
+                dx: dx !== undefined ? dx : 4,
+                dy: dy !== undefined ? dy : -4,
+                color: '#60a5fa'
+            };
+        }
+
+        // Bricks Configuration
+        let bricks = [];
+        let brickRowCount = 5;
+        let brickColumnCount = 8;
+        let brickWidth = 85;
+        let brickHeight = 24;
+        let brickPadding = 12;
+        let brickOffsetTop = 70;
+        let brickOffsetLeft = 55;
+
+        const brickColors = [
+            { border: '#f43f5e', fill: '#fda4af', points: 50 }, // Pink
+            { border: '#f97316', fill: '#fdba74', points: 40 }, // Orange
+            { border: '#eab308', fill: '#fde047', points: 30 }, // Yellow
+            { border: '#10b981', fill: '#6ee7b7', points: 20 }, // Green
+            { border: '#3b82f6', fill: '#93c5fd', points: 10 }  // Blue
+        ];
+
+        // Power-ups
+        let powerUps = [];
+        const powerUpTypes = [
+            { type: 'expand', color: '#3b82f6', name: 'Mở Rộng' },
+            { type: 'multiball', color: '#f59e0b', name: 'Nhân Bóng' },
+            { type: 'life', color: '#f43f5e', name: '+1 Mạng' }
+        ];
+
+        // Particles
+        let particles = [];
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 14; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: Math.cos(angle) * speed,
+                    dy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 1,
+                    color: color,
+                    alpha: 1,
+                    decay: Math.random() * 0.03 + 0.02
+                });
+            }
+        }
+
+        // Keyboard Controls
+        let rightPressed = false;
+        let leftPressed = false;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                rightPressed = true;
+            } else if (e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                leftPressed = true;
+            } else if (e.key === ' ' || e.key === 'p' || e.key === 'P') {
+                if (gameState === 'PLAYING' || gameState === 'PAUSED') togglePause();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                rightPressed = false;
+            } else if (e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                leftPressed = false;
+            }
+        });
+
+        // Mouse & Touch Controls
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameState !== 'PLAYING') return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = VIRTUAL_WIDTH / rect.width;
+            paddle.targetX = (e.clientX - rect.left) * scaleX - paddle.width / 2;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (gameState !== 'PLAYING') return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = VIRTUAL_WIDTH / rect.width;
+            paddle.targetX = (e.touches[0].clientX - rect.left) * scaleX - paddle.width / 2;
+        }, { passive: false });
+
+        // Web Audio API Synthesis
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'paddle') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.exponentialRampToValueAtTime(640, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now); osc.stop(now + 0.08);
+                } else if (type === 'brick') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(450, now);
+                    osc.frequency.exponentialRampToValueAtTime(850, now + 0.12);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                    osc.start(now); osc.stop(now + 0.12);
+                } else if (type === 'powerup') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.setValueAtTime(600, now + 0.08);
+                    osc.frequency.setValueAtTime(880, now + 0.16);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+                    osc.start(now); osc.stop(now + 0.24);
+                } else if (type === 'lose') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(250, now);
+                    osc.frequency.exponentialRampToValueAtTime(70, now + 0.35);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now); osc.stop(now + 0.35);
+                }
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
+
+        function toggleMute() {
+            soundEnabled = !soundEnabled;
+            soundBtn.className = soundEnabled ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark text-rose-400";
+            showToast(soundEnabled ? "Đã bật âm thanh" : "Đã tắt âm thanh");
+        }
+
+        function showToast(text, iconClass = "fa-circle-check") {
+            const toast = document.getElementById('msgToast');
+            document.getElementById('msgText').textContent = text;
+            document.getElementById('msgIcon').className = `fa-solid ${iconClass} text-emerald-400 text-lg`;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 2200);
+        }
+
+        // Initialize Bricks Grid
+        function initBricks() {
+            bricks = [];
+            const totalWidthAvailable = VIRTUAL_WIDTH - (brickOffsetLeft * 2);
+            brickWidth = (totalWidthAvailable - (brickColumnCount - 1) * brickPadding) / brickColumnCount;
+
+            for (let c = 0; c < brickColumnCount; c++) {
+                bricks[c] = [];
+                for (let r = 0; r < brickRowCount; r++) {
+                    bricks[c][r] = {
+                        x: c * (brickWidth + brickPadding) + brickOffsetLeft,
+                        y: r * (brickHeight + brickPadding) + brickOffsetTop,
+                        status: 1,
+                        color: brickColors[r % brickColors.length],
+                        hasPowerUp: Math.random() < 0.22 // 22% drop rate
+                    };
+                }
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            score = 0;
+            lives = 3;
+            level = 1;
+            updateHUD();
+
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden');
+
+            resetLevel();
+            gameState = 'PLAYING';
+        }
+
+        function resetLevel() {
+            paddle.width = 120;
+            paddle.x = VIRTUAL_WIDTH / 2 - paddle.width / 2;
+            paddle.targetX = paddle.x;
+            balls = [createBall()];
+            powerUps = [];
+            particles = [];
+            initBricks();
+        }
+
+        function nextLevel() {
+            level++;
+            updateHUD();
+            victoryScreen.classList.add('hidden');
+            resetLevel();
+            gameState = 'PLAYING';
+            showToast(`Sang Màn ${level}! Tốc độ bóng tăng dần!`, "fa-bolt");
+        }
+
+        function restartGame() {
+            gameOverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden');
+            startGame();
+        }
+
+        function togglePause() {
+            if (gameState === 'PLAYING') {
+                gameState = 'PAUSED';
+                pauseScreen.classList.remove('hidden');
+                pauseIcon.className = "fa-solid fa-play";
+            } else if (gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                pauseScreen.classList.add('hidden');
+                pauseIcon.className = "fa-solid fa-pause";
+            }
+        }
+
+        function updateHUD() {
+            scoreEl.textContent = score;
+            livesEl.textContent = lives;
+            levelEl.textContent = level;
+            highScoreEl.textContent = highScore;
+        }
+
+        // Main Physics Update Logic
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            // Keyboard paddle movement
+            if (rightPressed) paddle.targetX += paddle.speed * 1.5;
+            else if (leftPressed) paddle.targetX -= paddle.speed * 1.5;
+
+            // Bounds check
+            if (paddle.targetX < 10) paddle.targetX = 10;
+            if (paddle.targetX > VIRTUAL_WIDTH - paddle.width - 10) paddle.targetX = VIRTUAL_WIDTH - paddle.width - 10;
+
+            // Smooth interpolation (lerp)
+            paddle.x += (paddle.targetX - paddle.x) * 0.35;
+
+            // Balls logic
+            for (let i = balls.length - 1; i >= 0; i--) {
+                let ball = balls[i];
+                const speedMultiplier = 1 + (level - 1) * 0.12;
+                ball.x += ball.dx * speedMultiplier;
+                ball.y += ball.dy * speedMultiplier;
+
+                // Left & Right walls
+                if (ball.x - ball.radius < 0) {
+                    ball.x = ball.radius;
+                    ball.dx = -ball.dx;
+                    playSound('paddle');
+                } else if (ball.x + ball.radius > VIRTUAL_WIDTH) {
+                    ball.x = VIRTUAL_WIDTH - ball.radius;
+                    ball.dx = -ball.dx;
+                    playSound('paddle');
+                }
+
+                // Top wall
+                if (ball.y - ball.radius < 0) {
+                    ball.y = ball.radius;
+                    ball.dy = -ball.dy;
+                    playSound('paddle');
+                }
+
+                // Paddle Collision
+                if (
+                    ball.y + ball.radius >= paddle.y &&
+                    ball.y - ball.radius <= paddle.y + paddle.height &&
+                    ball.x >= paddle.x &&
+                    ball.x <= paddle.x + paddle.width
+                ) {
+                    ball.y = paddle.y - ball.radius;
+                    let hitPoint = ball.x - (paddle.x + paddle.width / 2);
+                    let normalizedHit = hitPoint / (paddle.width / 2);
+                    let maxAngle = Math.PI / 3; // 60 degrees
+                    let angle = normalizedHit * maxAngle;
+                    let speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+
+                    ball.dx = speed * Math.sin(angle);
+                    ball.dy = -Math.abs(speed * Math.cos(angle));
+
+                    playSound('paddle');
+                    createParticles(ball.x, ball.y, '#3b82f6');
+                }
+
+                // Bottom bound (Lost ball)
+                if (ball.y - ball.radius > VIRTUAL_HEIGHT) {
+                    balls.splice(i, 1);
+                    if (balls.length === 0) {
+                        lives--;
+                        updateHUD();
+                        playSound('lose');
+                        if (lives <= 0) {
+                            gameState = 'GAMEOVER';
+                            gameOverScreen.classList.remove('hidden');
+                            document.getElementById('finalScore').textContent = score;
+                            document.getElementById('finalHighScore').textContent = highScore;
+                        } else {
+                            balls.push(createBall());
+                            paddle.x = VIRTUAL_WIDTH / 2 - paddle.width / 2;
+                            paddle.targetX = paddle.x;
+                        }
+                    }
+                }
+
+                // Brick collisions
+                let levelCleared = true;
+                for (let c = 0; c < brickColumnCount; c++) {
+                    for (let r = 0; r < brickRowCount; r++) {
+                        let b = bricks[c][r];
+                        if (b.status === 1) {
+                            levelCleared = false;
+                            if (
+                                ball.x + ball.radius > b.x &&
+                                ball.x - ball.radius < b.x + brickWidth &&
+                                ball.y + ball.radius > b.y &&
+                                ball.y - ball.radius < b.y + brickHeight
+                            ) {
+                                ball.dy = -ball.dy;
+                                b.status = 0;
+                                score += b.color.points;
+
+                                if (score > highScore) {
+                                    highScore = score;
+                                    localStorage.setItem('neon_breakout_highscore', highScore);
+                                }
+                                updateHUD();
+                                playSound('brick');
+                                createParticles(b.x + brickWidth / 2, b.y + brickHeight / 2, b.color.fill);
+
+                                if (b.hasPowerUp) {
+                                    const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                                    powerUps.push({
+                                        x: b.x + brickWidth / 2,
+                                        y: b.y + brickHeight / 2,
+                                        width: 24,
+                                        height: 24,
+                                        dy: 2.2,
+                                        type: randomType.type,
+                                        color: randomType.color
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (levelCleared) {
+                    gameState = 'VICTORY';
+                    victoryScreen.classList.remove('hidden');
+                    victoryTitle.textContent = `Hoàn Thành Màn ${level}!`;
+                    victoryDesc.textContent = `Tổng điểm hiện tại: ${score} điểm!`;
+                    playSound('powerup');
+                    return;
+                }
+            }
+
+            // Power-ups physics
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                let p = powerUps[i];
+                p.y += p.dy;
+
+                // Catch powerup
+                if (
+                    p.y + p.height / 2 >= paddle.y &&
+                    p.y - p.height / 2 <= paddle.y + paddle.height &&
+                    p.x >= paddle.x &&
+                    p.x <= paddle.x + paddle.width
+                ) {
+                    playSound('powerup');
+                    if (p.type === 'expand') {
+                        paddle.width = Math.min(paddle.width + 40, 220);
+                        showToast("Vật phẩm: Mở Rộng Thanh Mới!", "fa-arrows-split-up-and-left");
+                    } else if (p.type === 'multiball') {
+                        const baseBall = balls[0] || createBall();
+                        balls.push(createBall(baseBall.x, baseBall.y, -3.5, -4.5));
+                        balls.push(createBall(baseBall.x, baseBall.y, 3.5, -4.5));
+                        showToast("Vật phẩm: Nhân Bản 3 Bóng!", "fa-circle-dot");
+                    } else if (p.type === 'life') {
+                        lives++;
+                        updateHUD();
+                        showToast("Vật phẩm: Tăng +1 Mạng!", "fa-heart");
+                    }
+                    createParticles(p.x, p.y, p.color);
+                    powerUps.splice(i, 1);
+                    continue;
+                }
+
+                if (p.y > VIRTUAL_HEIGHT) powerUps.splice(i, 1);
+            }
+
+            // Particle update
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let pt = particles[i];
+                pt.x += pt.dx;
+                pt.y += pt.dy;
+                pt.alpha -= pt.decay;
+                if (pt.alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        // Render Canvas Visuals
+        function draw() {
+            ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+
+            // Draw Background Grid
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.25)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < VIRTUAL_WIDTH; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VIRTUAL_HEIGHT); ctx.stroke();
+            }
+            for (let y = 0; y < VIRTUAL_HEIGHT; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VIRTUAL_WIDTH, y); ctx.stroke();
+            }
+
+            // Draw Bricks
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    let b = bricks[c][r];
+                    if (b.status === 1) {
+                        ctx.save();
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = b.color.fill;
+                        ctx.fillStyle = b.color.fill;
+                        ctx.strokeStyle = b.color.border;
+                        ctx.lineWidth = 2;
+
+                        drawRoundedRect(ctx, b.x, b.y, brickWidth, brickHeight, 6, true, true);
+
+                        // Highlight line
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.fillRect(b.x + 4, b.y + 3, brickWidth - 8, 3);
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // Draw Paddle
+            ctx.save();
+            ctx.shadowBlur = 16;
+            ctx.shadowColor = '#3b82f6';
+            ctx.fillStyle = paddle.color;
+            drawRoundedRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 8, true, false);
+            
+            // Paddle shine
+            ctx.fillStyle = '#93c5fd';
+            drawRoundedRect(ctx, paddle.x + 4, paddle.y + 2, paddle.width - 8, 4, 3, true, false);
+            ctx.restore();
+
+            // Draw Balls
+            balls.forEach(ball => {
+                ctx.save();
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#60a5fa';
+                ctx.fillStyle = ball.color;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Draw Power-ups
+            powerUps.forEach(p => {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = p.color;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
+            });
+
+            // Draw Particles
+            particles.forEach(pt => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, pt.alpha);
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius, fill, stroke) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            if (fill) ctx.fill();
+            if (stroke) ctx.stroke();
+        }
+
+        // Loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function() {
+            initBricks();
+            draw();
+            requestAnimationFrame(gameLoop);
+        };
+
+        function openInfoModal() {
+            if (gameState === 'PLAYING') togglePause();
+            document.getElementById('infoModal').classList.remove('hidden');
+        }
+
+        function closeInfoModal() {
+            document.getElementById('infoModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
